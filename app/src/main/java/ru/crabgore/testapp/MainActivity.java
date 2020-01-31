@@ -1,7 +1,6 @@
 package ru.crabgore.testapp;
 
 import android.os.Bundle;
-import android.util.Log;
 import android.view.View;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -80,16 +79,24 @@ public class MainActivity extends AppCompatActivity {
         MyPagerAdapter upperAdapter = new MyPagerAdapter(upperUrls, this);
         MyPagerAdapter lowerAdapter = new MyPagerAdapter(lowerUrls, this);
 
-        upperPager.setAdapter(upperAdapter);
-        upperPager.addOnPageChangeListener(new MyPageListener(upperPager, upperUrls, UPPER));
-        upperPager.setBorderAnimation(false);
-        upperPager.setSlideBorderMode(AutoScrollViewPager.SLIDE_BORDER_MODE_CYCLE);
-        upperPager.setCycle(false);
-
-        lowerPager.setAdapter(lowerAdapter);
-        lowerPager.addOnPageChangeListener(new MyPageListener(lowerPager, lowerUrls, LOWER));
+        initPager(upperAdapter, upperPager, upperUrls, UPPER);
+        initPager(lowerAdapter, lowerPager, lowerUrls, LOWER);
     }
 
+    private void initPager(MyPagerAdapter adapter, AutoScrollViewPager pager, List<Url> urls, int id) {
+        pager.setAdapter(adapter);
+        pager.addOnPageChangeListener(new MyPageListener(pager, urls, id));
+        pager.setBorderAnimation(false);
+        pager.setSlideBorderMode(AutoScrollViewPager.SLIDE_BORDER_MODE_CYCLE);
+        pager.setCycle(false);
+    }
+
+    private void constructPager(AutoScrollViewPager pager, Cell cell, int direction) {
+        pager.startAutoScroll();
+        pager.setInterval(cell.getSliderInterval());
+        pager.setDirection(direction);
+        pager.setScrollDurationFactor(5);
+    }
 
     public void pause(int id) {
         if (id == UPPER) upperPager.stopAutoScroll();
@@ -102,13 +109,6 @@ public class MainActivity extends AppCompatActivity {
         } else if (id == LOWER) {
             constructPager(lowerPager, lowerCell, AutoScrollViewPager.LEFT);
         }
-    }
-
-    private void constructPager(AutoScrollViewPager pager, Cell cell, int direction) {
-        pager.startAutoScroll();
-        pager.setInterval(cell.getSliderInterval());
-        pager.setDirection(direction);
-        pager.setScrollDurationFactor(5);
     }
 
     public class MyPageListener implements ViewPager.OnPageChangeListener {
@@ -137,7 +137,8 @@ public class MainActivity extends AppCompatActivity {
                     public void onVideoEnd() {
                         if (position == list.size()-1) {
                             pager.setCurrentItem(0);
-                        } else resume(id);
+                        } else
+                            pager.setCurrentItem(pager.getCurrentItem()+1);
                     }
                 });
             } else resume(id);
