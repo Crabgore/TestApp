@@ -139,17 +139,20 @@ public class MainActivity extends AppCompatActivity {
             remove(id);
             if (list.get(pager.getCurrentItem() % list.size()).getMimeType().contains("video")){
                 View myView = pager.findViewWithTag(position);
-                TextureVideoView videoView = myView.findViewById(R.id.video);
-                videoView.play();
-                videoView.setListener(new TextureVideoView.MediaPlayerListener() {
-                    @Override
-                    public void onVideoPrepared() {}
+                if (myView != null) {
+                    TextureVideoView videoView = myView.findViewById(R.id.video);
+                    videoView.play();
+                    videoView.setListener(new TextureVideoView.MediaPlayerListener() {
+                        @Override
+                        public void onVideoPrepared() {
+                        }
 
-                    @Override
-                    public void onVideoEnd() {
-                        cont(id);
-                    }
-                });
+                        @Override
+                        public void onVideoEnd() {
+                            cont(id);
+                        }
+                    });
+                } else cont(id);
             } else {
                 start(id);
             }
