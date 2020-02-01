@@ -1,6 +1,7 @@
 package ru.crabgore.testapp;
 
 import android.os.Bundle;
+import android.os.Handler;
 import android.view.View;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -10,11 +11,10 @@ import com.google.gson.Gson;
 
 import java.util.List;
 
-import ru.crabgore.testapp.adapter.MyPagerAdapter;
 import ru.crabgore.testapp.restModel.Cell;
 import ru.crabgore.testapp.restModel.RestModel;
 import ru.crabgore.testapp.restModel.Url;
-import ru.crabgore.testapp.tools.AutoScrollViewPager;
+import ru.crabgore.testapp.adapter.PagerAdapter;
 import ru.crabgore.testapp.tools.TextureVideoView;
 
 import static ru.crabgore.testapp.ResultBase.LOWER;
@@ -23,8 +23,10 @@ import static ru.crabgore.testapp.ResultBase.result;
 
 public class MainActivity extends AppCompatActivity {
     private RestModel restModel;
-    private AutoScrollViewPager upperPager;
-    private AutoScrollViewPager lowerPager;
+    private ViewPager upperPager;
+    private ViewPager lowerPager;
+
+    private Handler handler = new Handler();
 
     private Cell upperCell;
     private Cell lowerCell;
@@ -48,15 +50,15 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onPause() {
         super.onPause();
-        pause(UPPER);
-        pause(LOWER);
+        remove(UPPER);
+        remove(LOWER);
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        resume(UPPER);
-        resume(LOWER);
+        cont(UPPER);
+        cont(LOWER);
     }
 
     private void initUI() {
@@ -76,56 +78,66 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void initPagers() {
-        MyPagerAdapter upperAdapter = new MyPagerAdapter(upperUrls, this);
-        MyPagerAdapter lowerAdapter = new MyPagerAdapter(lowerUrls, this);
+        PagerAdapter upperAdapter = new PagerAdapter(this, upperUrls).setInfiniteLoop(true);
+        PagerAdapter lowerAdapter = new PagerAdapter(this, lowerUrls).setInfiniteLoop(true);
 
         initPager(upperAdapter, upperPager, upperUrls, UPPER);
         initPager(lowerAdapter, lowerPager, lowerUrls, LOWER);
     }
 
-    private void initPager(MyPagerAdapter adapter, AutoScrollViewPager pager, List<Url> urls, int id) {
+    private void initPager(PagerAdapter adapter, ViewPager pager, List<Url> urls, int id) {
         pager.setAdapter(adapter);
         pager.addOnPageChangeListener(new MyPageListener(pager, urls, id));
-        pager.setBorderAnimation(false);
-        pager.setSlideBorderMode(AutoScrollViewPager.SLIDE_BORDER_MODE_CYCLE);
-        pager.setCycle(false);
+        pager.setPageTransformer(true, new FadeOutTransformation());
     }
 
-    private void constructPager(AutoScrollViewPager pager, Cell cell, int direction) {
-        pager.startAutoScroll();
-        pager.setInterval(cell.getSliderInterval());
-        pager.setDirection(direction);
-        pager.setScrollDurationFactor(5);
+    private void start(int id) {
+        if (id == UPPER) handler.postDelayed(upperSliderRunnable, upperCell.getSliderInterval());
+        else if (id == LOWER) handler.postDelayed(lowerSliderRunnable, lowerCell.getSliderInterval());
     }
 
-    public void pause(int id) {
-        if (id == UPPER) upperPager.stopAutoScroll();
-        else if (id == LOWER) lowerPager.stopAutoScroll();
+    private void cont(int id) {
+        if (id == UPPER) handler.post(upperSliderRunnable);
+        else if (id == LOWER) handler.post(lowerSliderRunnable);
     }
 
-    public void resume(int id) {
-        if (id == UPPER) {
-            constructPager(upperPager, upperCell, AutoScrollViewPager.RIGHT);
-        } else if (id == LOWER) {
-            constructPager(lowerPager, lowerCell, AutoScrollViewPager.LEFT);
+    private void remove(int id) {
+        if (id == UPPER) handler.removeCallbacks(upperSliderRunnable);
+        else if (id == LOWER) handler.removeCallbacks(lowerSliderRunnable);
+    }
+
+    private Runnable upperSliderRunnable = new Runnable() {
+        @Override
+        public void run() {
+            upperPager.setCurrentItem(upperPager.getCurrentItem() + 1);
         }
-    }
+    };
+
+    private Runnable lowerSliderRunnable = new Runnable() {
+        @Override
+        public void run() {
+            lowerPager.setCurrentItem(lowerPager.getCurrentItem() + 1);
+        }
+    };
 
     public class MyPageListener implements ViewPager.OnPageChangeListener {
-        private AutoScrollViewPager pager;
+        private ViewPager pager;
         private List<Url> list;
         private int id;
 
-        MyPageListener(AutoScrollViewPager pager, List<Url> list, int id) {
+        MyPageListener(ViewPager pager, List<Url> list, int id) {
             this.pager = pager;
             this.list = list;
             this.id = id;
         }
 
         @Override
-        public void onPageScrolled(int position, float positionOffset, int positionOffsetPixels) {
-            if (list.get(position).getMimeType().contains("video")){
-                pause(id);
+        public void onPageScrolled(int position, float positionOffset, int positionOffsetPixels) {}
+
+        @Override
+        public void onPageSelected(int position) {
+            remove(id);
+            if (list.get(pager.getCurrentItem() % list.size()).getMimeType().contains("video")){
                 View myView = pager.findViewWithTag(position);
                 TextureVideoView videoView = myView.findViewById(R.id.video);
                 videoView.play();
@@ -135,19 +147,23 @@ public class MainActivity extends AppCompatActivity {
 
                     @Override
                     public void onVideoEnd() {
-                        if (position == list.size()-1) {
-                            pager.setCurrentItem(0);
-                        } else
-                            pager.setCurrentItem(pager.getCurrentItem()+1);
+                        cont(id);
                     }
                 });
-            } else resume(id);
+            } else {
+                start(id);
+            }
         }
 
         @Override
-        public void onPageSelected(int position) {}
-
-        @Override
         public void onPageScrollStateChanged(int state) {}
+    }
+
+    public class FadeOutTransformation implements ViewPager.PageTransformer{
+        @Override
+        public void transformPage(View page, float position) {
+            page.setTranslationX(-position*page.getWidth());
+            page.setAlpha(1-Math.abs(position));
+        }
     }
 }

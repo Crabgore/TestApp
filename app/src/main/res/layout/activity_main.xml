@@ -8,13 +8,13 @@
     android:orientation="vertical"
     tools:context=".MainActivity">
 
-    <ru.crabgore.testapp.tools.AutoScrollViewPager
+    <androidx.viewpager.widget.ViewPager
         android:id="@+id/upper"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:layout_weight="1"/>
 
-    <ru.crabgore.testapp.tools.AutoScrollViewPager
+    <androidx.viewpager.widget.ViewPager
         android:id="@+id/lower"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
